@@ -16,18 +16,34 @@ app.use(session({
     saveUninitialized: true
 }));
 
-// --- 2. VERİTABANI BAĞLANTISI (Havuz Sistemi - Hata Vermez) ---
+// --- 2. VERİTABANI BAĞLANTISI (Otomatik Algılama) ---
 const db = mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'final_projesi',
+    host: process.env.TIDB_HOST || 'localhost',
+    user: process.env.TIDB_USER || 'root',
+    password: process.env.TIDB_PASSWORD || '',
+    database: process.env.TIDB_DB_NAME || 'final_projesi',
+    port: process.env.TIDB_PORT || 3306, // TiDB genelde 4000 portunu kullanır, lokalde 3306
+    ssl: process.env.TIDB_HOST ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : false,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
 });
 
-console.log('✅ Veritabanı bağlantısı hazır!');
+db.getConnection((err, connection) => {
+    if (err) {
+        console.error('❌ Veritabanı hatası:', err.code);
+        if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+            console.error('Veritabanı bağlantısı koptu.');
+        } else if (err.code === 'ER_CON_COUNT_ERROR') {
+            console.error('Veritabanında çok fazla bağlantı var.');
+        } else if (err.code === 'ECONNREFUSED') {
+            console.error('Veritabanı bağlantısı reddedildi (Bilgileri kontrol et).');
+        }
+    } else {
+        console.log('✅ Veritabanına başarıyla bağlanıldı!');
+        connection.release();
+    }
+});
 
 // --- 3. ROTALAR (SAYFALAR) ---
 
