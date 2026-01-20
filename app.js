@@ -215,7 +215,8 @@ app.post('/update/:id', (req, res) => {
     } else res.redirect('/login');
 });
 
-// --- 4. SUNUCUYU BAŞLAT ---
-app.listen(3000, () => {
-    console.log('🚀 Sunucu çalışıyor: http://localhost:3000');
+// --- 4. SUNUCUYU BAŞLAT (Otomatik Port Ayarı) ---
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`🚀 Sunucu çalışıyor: Port ${PORT}`);
 });
