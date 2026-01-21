@@ -99,11 +99,14 @@ app.get('/post/:id', (req, res) => {
             db.query("SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC", [postId], (err, comments) => {
                 if (err) throw err;
                 
+                // --- GÜNCELLEME BURADA ---
                 res.render('post', { 
                     post: post, 
                     comments: comments, 
-                    user: req.session.user 
+                    user: req.session.user,
+                    loggedin: req.session.loggedin // <--- BU SATIRI EKLEDİK! Artık yorum kutusu görünecek.
                 });
+                // -------------------------
             });
         } else {
             res.send("Böyle bir yazı bulunamadı!");

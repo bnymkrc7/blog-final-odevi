@@ -2,6 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yeni Yazı Ekle</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
@@ -11,31 +12,33 @@
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <div class="card shadow">
-                    <div class="card-header bg-primary text-white">
-                        <h4 class="mb-0">✍️ Yeni Yazı Ekle</h4>
+                    <div class="card-header bg-dark text-white">
+                        <h4 class="mb-0">Yeni Blog Yazısı Ekle</h4>
                     </div>
                     <div class="card-body">
                         <form action="/add-post" method="POST">
-                            <div class="mb-3">
-                                <label class="form-label">Yazı Başlığı</label>
-                                <input type="text" name="title" class="form-control" required placeholder="Örn: Node.js Dersleri">
-                            </div>
                             
                             <div class="mb-3">
-                                <label class="form-label">Resim URL (İsteğe Bağlı)</label>
-                                <input type="text" name="image_url" class="form-control" placeholder="Örn: https://resim-linki.com/resim.jpg">
-                                <small class="text-muted">Google'dan bir resim linki yapıştırabilirsin.</small>
+                                <label for="title" class="form-label">Yazı Başlığı</label>
+                                <input type="text" class="form-control" id="title" name="title" required>
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Yazı İçeriği</label>
-                                <textarea name="content" class="form-control" rows="6" required placeholder="Buraya yazını yaz..."></textarea>
+                                <label for="image_url" class="form-label">Resim Linki (URL)</label>
+                                <input type="text" class="form-control" id="image_url" name="image_url" placeholder="https://...">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="content" class="form-label">İçerik</label>
+                                <textarea class="form-control" id="content" name="content" rows="10" required></textarea>
                             </div>
 
                             <div class="d-flex justify-content-between">
-                                <a href="/admin" class="btn btn-secondary">İptal</a>
-                                <button type="submit" class="btn btn-success px-4">Yayınla</button>
+                                <a href="/" class="btn btn-secondary">İptal</a>
+                                
+                                <button type="submit" class="btn btn-success">Yayınla</button>
                             </div>
+
                         </form>
                     </div>
                 </div>
