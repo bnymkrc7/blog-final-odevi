@@ -182,6 +182,62 @@ app.get('/logout', (req, res) => {
 app.get('/about', (req, res) => { res.render('about', { user: req.session.user }); });
 app.get('/contact', (req, res) => { res.render('contact', { user: req.session.user }); });
 
+// --- YENİ EKLENEN KISIMLAR (SİLME VE DÜZENLEME) ---
+
+// G. YAZI SİLME (Sadece Admin)
+app.get('/delete-post/:id', (req, res) => {
+    // Güvenlik: Sadece admin silebilir
+    if (req.session.user && req.session.user.role === 'admin') {
+        const postId = req.params.id;
+        // Önce yorumları sil (yoksa veritabanı hata verir), sonra yazıyı sil
+        db.query("DELETE FROM comments WHERE post_id = ?", [postId], (err) => {
+            if (err) throw err;
+            db.query("DELETE FROM posts WHERE id = ?", [postId], (err) => {
+                if (err) throw err;
+                res.redirect('/');
+            });
+        });
+    } else {
+        res.send("Yetkisiz işlem!");
+    }
+});
+
+// H. YAZI DÜZENLEME SAYFASI (Sadece Admin)
+app.get('/edit-post/:id', (req, res) => {
+    if (req.session.user && req.session.user.role === 'admin') {
+        const postId = req.params.id;
+        db.query("SELECT * FROM posts WHERE id = ?", [postId], (err, result) => {
+            if (err) throw err;
+            if (result.length > 0) {
+                res.render('edit-post', { post: result[0] });
+            } else {
+                res.send("Yazı bulunamadı.");
+            }
+        });
+    } else {
+        res.redirect('/');
+    }
+});
+
+// I. YAZI GÜNCELLEME İŞLEMİ (Sadece Admin)
+app.post('/edit-post/:id', (req, res) => {
+    if (req.session.user && req.session.user.role === 'admin') {
+        const postId = req.params.id;
+        const { title, content, image_url } = req.body;
+        
+        const sql = "UPDATE posts SET title = ?, content = ?, image_url = ? WHERE id = ?";
+        db.query(sql, [title, content, image_url, postId], (err, result) => {
+            if (err) throw err;
+            res.redirect('/post/' + postId); // Düzenlenen yazıya git
+        });
+    } else {
+        res.send("Yetkisiz işlem!");
+    }
+});
+
+// --- BURASI ZATEN VARDI ---
+const PORT = process.env.PORT || 3000;
+// ...
 // Sunucuyu Başlat
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
