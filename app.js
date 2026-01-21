@@ -48,16 +48,16 @@ db.getConnection((err, connection) => {
 app.get('/', (req, res) => {
     // Önce veritabanından yazıları istiyoruz
     const sql = "SELECT * FROM posts ORDER BY created_at DESC";
-    
+
     db.query(sql, (err, results) => {
         if (err) {
             console.error(err);
             res.send("Veritabanı hatası oluştu.");
         } else {
             // Veriler geldi (results), şimdi sayfaya gönderiyoruz
-            res.render('index', { 
+            res.render('index', {
                 posts: results, // <-- Hata buradaydı, artık 'results' var.
-                user: req.session.user 
+                user: req.session.user
             });
         }
     });
@@ -66,9 +66,9 @@ app.get('/', (req, res) => {
 // B. YAZI EKLEME SAYFASI (SADECE ADMIN)
 app.get('/add-post', (req, res) => {
     if (req.session.user && req.session.user.role === 'admin') {
-        res.render('add-post'); 
+        res.render('add-post');
     } else {
-        res.redirect('/'); 
+        res.redirect('/');
     }
 });
 
@@ -77,7 +77,7 @@ app.post('/add-post', (req, res) => {
     if (req.session.user && req.session.user.role === 'admin') {
         const { title, content, image_url } = req.body;
         const sql = "INSERT INTO posts (title, content, image_url) VALUES (?, ?, ?)";
-        
+
         db.query(sql, [title, content, image_url], (err, result) => {
             if (err) throw err;
             res.redirect('/');
@@ -90,19 +90,19 @@ app.post('/add-post', (req, res) => {
 // C. DETAY SAYFASI (Yazı + Yorumlar)
 app.get('/post/:id', (req, res) => {
     const postId = req.params.id;
-    
+
     db.query("SELECT * FROM posts WHERE id = ?", [postId], (err, result) => {
         if (err) throw err;
-        
+
         if (result.length > 0) {
             const post = result[0];
             db.query("SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC", [postId], (err, comments) => {
                 if (err) throw err;
-                
+
                 // --- GÜNCELLEME BURADA ---
-                res.render('post', { 
-                    post: post, 
-                    comments: comments, 
+                res.render('post', {
+                    post: post,
+                    comments: comments,
                     user: req.session.user,
                     loggedin: req.session.loggedin // <--- BU SATIRI EKLEDİK! Artık yorum kutusu görünecek.
                 });
@@ -116,7 +116,7 @@ app.get('/post/:id', (req, res) => {
 
 // D. YORUM YAPMA İŞLEMİ
 app.post('/post/:id/comment', (req, res) => {
-    if (req.session.user) { 
+    if (req.session.user) {
         const postId = req.params.id;
         const username = req.session.user.username;
         const { comment } = req.body;
@@ -154,15 +154,15 @@ app.get('/login', (req, res) => {
 
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
-    
+
     db.query("SELECT * FROM users WHERE username = ? AND password = ?", [username, password], (err, results) => {
         if (err) throw err;
-        
+
         if (results.length > 0) {
             req.session.user = {
                 id: results[0].id,
                 username: results[0].username,
-                role: results[0].role 
+                role: results[0].role
             };
             req.session.loggedin = true;
             res.redirect('/');
@@ -224,7 +224,7 @@ app.post('/edit-post/:id', (req, res) => {
     if (req.session.user && req.session.user.role === 'admin') {
         const postId = req.params.id;
         const { title, content, image_url } = req.body;
-        
+
         const sql = "UPDATE posts SET title = ?, content = ?, image_url = ? WHERE id = ?";
         db.query(sql, [title, content, image_url, postId], (err, result) => {
             if (err) throw err;
@@ -235,9 +235,6 @@ app.post('/edit-post/:id', (req, res) => {
     }
 });
 
-// --- BURASI ZATEN VARDI ---
-const PORT = process.env.PORT || 3000;
-// ...
 // Sunucuyu Başlat
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -42,8 +42,8 @@
                                     <td><%= post.title %></td>
                                     <td><%= new Date(post.created_at).toLocaleDateString() %></td>
                                     <td class="text-end">
-                                        <a href="/edit/<%= post.id %>" class="btn btn-sm btn-warning">Düzenle</a>
-                                        <a href="/delete/<%= post.id %>" class="btn btn-sm btn-danger" onclick="return confirm('Silmek istediğine emin misin?')">Sil</a>
+                                        <a href="/edit-post/<%= post.id %>" class="btn btn-sm btn-warning">Düzenle</a>
+                                        <a href="/delete-post/<%= post.id %>" class="btn btn-sm btn-danger" onclick="return confirm('Silmek istediğine emin misin?')">Sil</a>
                                     </td>
                                 </tr>
                             <% }); %>
