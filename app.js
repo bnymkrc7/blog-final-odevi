@@ -16,17 +16,38 @@ app.use(session({
     saveUninitialized: true
 }));
 
-// --- 2. VERİTABANI BAĞLANTISI (Otomatik Algılama) ---
+// --- 2. VERİTABANI BAĞLANTISI VE TABLO OLUŞTURMA ---
 const db = mysql.createPool({
     host: process.env.TIDB_HOST || 'localhost',
     user: process.env.TIDB_USER || 'root',
     password: process.env.TIDB_PASSWORD || '',
-    database: process.env.TIDB_DB_NAME || 'final_projesi',
-    port: process.env.TIDB_PORT || 3306, // TiDB genelde 4000 portunu kullanır, lokalde 3306
-    ssl: process.env.TIDB_HOST ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : false,
+    database: process.env.TIDB_DB_NAME || 'test',
+    port: process.env.TIDB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    ssl: {
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: true
+    }
+});
+
+// 👇 BURASI SİHİRLİ KISIM: Tablo yoksa otomatik oluşturur!
+const createTableQuery = `
+CREATE TABLE IF NOT EXISTS posts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    image_url VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`;
+
+db.query(createTableQuery, (err) => {
+    if (err) {
+        console.error("❌ Tablo oluşturulurken hata çıktı:", err);
+    } else {
+        console.log("✅ Tablo kontrol edildi: Hazır!");
+    }
 });
 
 db.getConnection((err, connection) => {
