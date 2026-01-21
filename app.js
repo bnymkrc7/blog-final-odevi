@@ -69,10 +69,13 @@ db.getConnection((err, connection) => {
 // --- 3. ROTALAR (SAYFALAR) ---
 
 // A. ANA SAYFA (Yazıları Listele)
-app.get('/', (req, res) => {
-    db.query('SELECT * FROM posts ORDER BY created_at DESC', (err, results) => {
-        if (err) throw err;
-        res.render('index', { posts: results });
+app.get('/', async (req, res) => {
+    // ... blog yazılarını çekme kodların ...
+    
+    // user: req.session.user kısmını EKLEMELİSİN
+    res.render('index', { 
+        posts: posts, 
+        user: req.session.user // <-- BU SATIR ÇOK ÖNEMLİ
     });
 });
 // Hakkımızda Sayfası
