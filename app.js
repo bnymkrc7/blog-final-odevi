@@ -178,9 +178,23 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
+
 // Diğer Sayfalar
 app.get('/about', (req, res) => { res.render('about', { user: req.session.user }); });
 app.get('/contact', (req, res) => { res.render('contact', { user: req.session.user }); });
+
+// ADMIN PANELİ (Sadece Admin erişebilir)
+app.get('/admin', (req, res) => {
+    if (req.session.user && req.session.user.role === 'admin') {
+        db.query("SELECT * FROM posts ORDER BY created_at DESC", (err, posts) => {
+            if (err) throw err;
+            res.render('admin', { posts: posts });
+        });
+    } else {
+        res.redirect('/login');
+    }
+});
+
 
 // --- YENİ EKLENEN KISIMLAR (SİLME VE DÜZENLEME) ---
 
