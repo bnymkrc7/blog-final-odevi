@@ -16,7 +16,7 @@ app.use(session({
     saveUninitialized: true
 }));
 
-// --- 2. VERİTABANI BAĞLANTISI VE TABLO OLUŞTURMA ---
+// --- 2. VERİTABANI BAĞLANTISI ---
 const db = mysql.createPool({
     host: process.env.TIDB_HOST || 'localhost',
     user: process.env.TIDB_USER || 'root',
@@ -32,34 +32,10 @@ const db = mysql.createPool({
     }
 });
 
-// 👇 BURASI SİHİRLİ KISIM: Tablo yoksa otomatik oluşturur!
-const createTableQuery = `
-CREATE TABLE IF NOT EXISTS posts (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    content TEXT NOT NULL,
-    image_url VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)`;
-
-db.query(createTableQuery, (err) => {
-    if (err) {
-        console.error("❌ Tablo oluşturulurken hata çıktı:", err);
-    } else {
-        console.log("✅ Tablo kontrol edildi: Hazır!");
-    }
-});
-
+// Bağlantı Kontrolü
 db.getConnection((err, connection) => {
     if (err) {
         console.error('❌ Veritabanı hatası:', err.code);
-        if (err.code === 'PROTOCOL_CONNECTION_LOST') {
-            console.error('Veritabanı bağlantısı koptu.');
-        } else if (err.code === 'ER_CON_COUNT_ERROR') {
-            console.error('Veritabanında çok fazla bağlantı var.');
-        } else if (err.code === 'ECONNREFUSED') {
-            console.error('Veritabanı bağlantısı reddedildi (Bilgileri kontrol et).');
-        }
     } else {
         console.log('✅ Veritabanına başarıyla bağlanıldı!');
         connection.release();
@@ -68,75 +44,91 @@ db.getConnection((err, connection) => {
 
 // --- 3. ROTALAR (SAYFALAR) ---
 
-// A. ANA SAYFA (Yazıları Listele)
-app.get('/', async (req, res) => {
-    // ... blog yazılarını çekme kodların ...
+// A. ANA SAYFA (BURASI DÜZELTİLDİ: Artık veritabanından 'posts' çekiyor)
+app.get('/', (req, res) => {
+    // Önce veritabanından yazıları istiyoruz
+    const sql = "SELECT * FROM posts ORDER BY created_at DESC";
     
-    // user: req.session.user kısmını EKLEMELİSİN
-    res.render('index', { 
-        posts: posts, 
-        user: req.session.user // <-- BU SATIR ÇOK ÖNEMLİ
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error(err);
+            res.send("Veritabanı hatası oluştu.");
+        } else {
+            // Veriler geldi (results), şimdi sayfaya gönderiyoruz
+            res.render('index', { 
+                posts: results, // <-- Hata buradaydı, artık 'results' var.
+                user: req.session.user 
+            });
+        }
     });
 });
-// Hakkımızda Sayfası
-app.get('/about', (req, res) => {
-    res.render('about');
+
+// B. YAZI EKLEME SAYFASI (SADECE ADMIN)
+app.get('/add-post', (req, res) => {
+    if (req.session.user && req.session.user.role === 'admin') {
+        res.render('add-post'); 
+    } else {
+        res.redirect('/'); 
+    }
 });
 
-// İletişim Sayfası
-app.get('/contact', (req, res) => {
-    res.render('contact');
+// YAZIYI KAYDETME (SADECE ADMIN)
+app.post('/add-post', (req, res) => {
+    if (req.session.user && req.session.user.role === 'admin') {
+        const { title, content, image_url } = req.body;
+        const sql = "INSERT INTO posts (title, content, image_url) VALUES (?, ?, ?)";
+        
+        db.query(sql, [title, content, image_url], (err, result) => {
+            if (err) throw err;
+            res.redirect('/');
+        });
+    } else {
+        res.send("Yetkisiz işlem!");
+    }
 });
-// --- DETAY SAYFASI (Yazı + Yorumlar) ---
+
+// C. DETAY SAYFASI (Yazı + Yorumlar)
 app.get('/post/:id', (req, res) => {
     const postId = req.params.id;
     
-    // 1. Önce yazıyı bul
     db.query("SELECT * FROM posts WHERE id = ?", [postId], (err, result) => {
         if (err) throw err;
         
         if (result.length > 0) {
             const post = result[0];
-
-            // 2. Sonra o yazıya ait yorumları bul
             db.query("SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC", [postId], (err, comments) => {
                 if (err) throw err;
                 
-                // Hem yazıyı hem yorumları sayfaya gönder
                 res.render('post', { 
                     post: post, 
                     comments: comments, 
-                    user: req.session.username, // Giriş yapan kullanıcı bilgisi
-                    loggedin: req.session.loggedin 
+                    user: req.session.user 
                 });
             });
-
         } else {
             res.send("Böyle bir yazı bulunamadı!");
         }
     });
 });
-// --- YORUM YAPMA İŞLEMİ ---
+
+// D. YORUM YAPMA İŞLEMİ
 app.post('/post/:id/comment', (req, res) => {
-    // Sadece giriş yapanlar yorum yapabilir
-    if (req.session.loggedin) {
+    if (req.session.user) { 
         const postId = req.params.id;
-        const username = req.session.username;
+        const username = req.session.user.username;
         const { comment } = req.body;
 
         const sql = "INSERT INTO comments (post_id, username, comment) VALUES (?, ?, ?)";
-        
         db.query(sql, [postId, username, comment], (err, result) => {
             if (err) throw err;
-            // Yorum yapınca aynı sayfaya geri dön
             res.redirect('/post/' + postId);
         });
     } else {
-        res.redirect('/login'); // Giriş yapmadıysa login'e at
+        res.redirect('/login');
     }
 });
 
-// B. KAYIT OL (Register)
+// E. KAYIT OL (Register)
 app.get('/register', (req, res) => {
     res.render('register');
 });
@@ -145,102 +137,50 @@ app.post('/register', (req, res) => {
     const { username, password } = req.body;
     db.query("INSERT INTO users (username, password, role) VALUES (?, ?, 'user')", [username, password], (err, result) => {
         if (err) {
-            res.send("Hata: Kullanıcı adı alınmış.");
+            res.send("Hata: Bu kullanıcı adı alınmış olabilir.");
         } else {
-            res.redirect('/');
+            res.redirect('/login');
         }
     });
 });
 
-// C. GİRİŞ YAP (Login)
+// F. GİRİŞ YAP (Login)
 app.get('/login', (req, res) => {
     res.render('login');
 });
 
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
+    
     db.query("SELECT * FROM users WHERE username = ? AND password = ?", [username, password], (err, results) => {
         if (err) throw err;
+        
         if (results.length > 0) {
+            req.session.user = {
+                id: results[0].id,
+                username: results[0].username,
+                role: results[0].role 
+            };
             req.session.loggedin = true;
-            req.session.username = username;
-            res.redirect('/admin');
+            res.redirect('/');
         } else {
-            res.send('Hatalı giriş!');
+            res.send('Hatalı kullanıcı adı veya şifre!');
         }
     });
 });
 
-// D. ÇIKIŞ YAP
+// Çıkış Yap (Logout)
 app.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/');
 });
 
-// --- ADMIN İŞLEMLERİ ---
+// Diğer Sayfalar
+app.get('/about', (req, res) => { res.render('about', { user: req.session.user }); });
+app.get('/contact', (req, res) => { res.render('contact', { user: req.session.user }); });
 
-// E. ADMIN PANELİ
-app.get('/admin', (req, res) => {
-    if (req.session.loggedin) {
-        db.query('SELECT * FROM posts ORDER BY created_at DESC', (err, results) => {
-            res.render('admin', { posts: results });
-        });
-    } else {
-        res.redirect('/login');
-    }
-});
-
-// F. YAZI EKLEME
-app.get('/add-post', (req, res) => {
-    if (req.session.loggedin) res.render('add-post');
-    else res.redirect('/login');
-});
-
-app.post('/add-post', (req, res) => {
-    if (req.session.loggedin) {
-        const { title, content, image_url } = req.body;
-        db.query("INSERT INTO posts (title, content, image_url) VALUES (?, ?, ?)", [title, content, image_url], (err) => {
-            if (err) throw err;
-            res.redirect('/admin');
-        });
-    } else res.redirect('/login');
-});
-
-// G. YAZI SİLME (İşte Aradığın Kısım Burası!)
-app.get('/delete/:id', (req, res) => {
-    if (req.session.loggedin) {
-        const postId = req.params.id;
-        db.query("DELETE FROM posts WHERE id = ?", [postId], (err) => {
-            if (err) throw err;
-            console.log("Yazı silindi ID:", postId);
-            res.redirect('/admin');
-        });
-    } else {
-        res.redirect('/login');
-    }
-});
-
-// H. YAZI DÜZENLEME (Edit)
-app.get('/edit/:id', (req, res) => {
-    if (req.session.loggedin) {
-        db.query("SELECT * FROM posts WHERE id = ?", [req.params.id], (err, result) => {
-            res.render('edit-post', { post: result[0] });
-        });
-    } else res.redirect('/login');
-});
-
-app.post('/update/:id', (req, res) => {
-    if (req.session.loggedin) {
-        const { title, content, image_url } = req.body;
-        db.query("UPDATE posts SET title = ?, content = ?, image_url = ? WHERE id = ?", [title, content, image_url, req.params.id], (err) => {
-            if (err) throw err;
-            res.redirect('/admin');
-        });
-    } else res.redirect('/login');
-});
-
-// --- 4. SUNUCUYU BAŞLAT (Otomatik Port Ayarı) ---
+// Sunucuyu Başlat
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Sunucu çalışıyor: Port ${PORT}`);
+    console.log(`Sunucu ${PORT} portunda çalışıyor...`);
 });
